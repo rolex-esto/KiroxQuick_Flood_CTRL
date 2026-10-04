@@ -1731,6 +1731,7 @@ export function MapView({
     setDriveRisk(null);
     // Return to the comparison so the commuter can pick another route or search.
     setPopup(null);
+    setRoutePanelMinimized(false);
     setTripStage(routeOptions.length > 0 ? 'comparing' : 'search');
     if (routeOptions.length > 0 && tripOrigin && tripDestination) {
       managerRef.current?.showRoutePreview?.(
@@ -1905,7 +1906,7 @@ export function MapView({
     markerManager?.setOrigin(origin.coord[0], origin.coord[1]);
     markerManager?.setDestination(destination.coord[0], destination.coord[1]);
     setTripStage('comparing');
-    setRoutePanelMinimized(window.innerWidth < 768);
+    setRoutePanelMinimized(false);
     // A fresh search resets any manual selection so the recommended route wins.
     manualRouteSelectionRef.current = false;
     void computeAndShowRoutes(origin, destination, travelMode, routePreference);
@@ -2576,10 +2577,10 @@ export function MapView({
    */
   const selectedRouteOption =
     routeOptions.find((o) => o.candidate.id === selectedRouteId) ?? null;
-  // Fit the preview after the compact sheet has rendered, keeping both trip
+  // Fit the preview after the sheet has rendered, keeping both trip
   // markers (especially Point A) above the sheet and below mobile navigation.
   useEffect(() => {
-    if (!routePanelMinimized || primaryLeftPanel !== 'compare' || !tripOrigin || !tripDestination) return;
+    if (primaryLeftPanel !== 'compare' || !tripOrigin || !tripDestination) return;
     const container = containerRef.current;
     const map = managerRef.current?.getMap?.();
     if (!container || !map || container.clientWidth >= 768) return;

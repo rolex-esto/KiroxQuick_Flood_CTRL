@@ -502,7 +502,7 @@ describe('MapView — trip flow entry (Search → Compare → Start)', () => {
 });
 
 describe('MapView — route preview (auto lines + selection + Start)', () => {
-  it('minimizes mobile route choices after Point B and frames the trip above the sheet', async () => {
+  it('shows mobile route choices after Point B and frames the trip above the sheet', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const user = userEvent.setup();
     const previousWidth = window.innerWidth;
@@ -521,18 +521,19 @@ describe('MapView — route preview (auto lines + selection + Start)', () => {
     });
     try {
       await pickPitxToMoa(user);
-      expect(await screen.findByTestId('route-summary')).toHaveTextContent(/Point A.*PITX/);
-      expect(screen.getByTestId('route-summary')).toHaveTextContent(/Point B.*Mall of Asia/);
-      expect(screen.getByTestId('trip-host')).toHaveAttribute('data-minimized', 'true');
+      expect(await screen.findByTestId('route-compare-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('trip-host')).not.toHaveAttribute('data-minimized');
+      expect(screen.getByTestId('start-route-button')).toBeInTheDocument();
       expect(fitBounds).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({
         pitch: 0,
         padding: { top: 168, bottom: 164, left: 40, right: 40 },
       }));
-      await user.click(screen.getByRole('button', { name: 'View routes' }));
-      expect(screen.getByTestId('trip-host')).not.toHaveAttribute('data-minimized');
-      expect(screen.getByTestId('start-route-button')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Minimize routes' }));
       expect(screen.getByTestId('trip-host')).toHaveAttribute('data-minimized', 'true');
+      expect(screen.getByTestId('route-summary')).toHaveTextContent(/Point A.*PITX/);
+      expect(screen.getByTestId('route-summary')).toHaveTextContent(/Point B.*Mall of Asia/);
+      await user.click(screen.getByRole('button', { name: 'View routes' }));
+      expect(screen.getByTestId('trip-host')).not.toHaveAttribute('data-minimized');
     } finally {
       measure.mockRestore();
       window.innerWidth = previousWidth;

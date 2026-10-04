@@ -2166,6 +2166,57 @@ body,
   display: none;
 }
 @media (max-width: 767px) {
+  .baharoute-trip-host:not(.baharoute-trip-host--search) {
+    max-height: min(56dvh, calc(100dvh - var(--baharoute-safe-top) - 172px));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 8px 12px calc(12px + var(--baharoute-safe-bottom));
+  }
+  .baharoute-route-comparison-details {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .baharoute-compare-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .baharoute-compare-panel > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .baharoute-compare-panel > .baharoute-route-controls {
+    grid-column: auto;
+  }
+  .baharoute-compare-panel > .baharoute-trip-panel__header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .baharoute-compare-panel .baharoute-trip-panel__subtitle {
+    grid-column: 1 / -1;
+  }
+  .baharoute-compare-panel .baharoute-segmented__option {
+    min-width: 0;
+    padding: 6px 4px;
+    font-size: 11px;
+    white-space: normal;
+    flex: 1 1 0;
+  }
+  .baharoute-compare-panel .baharoute-route-controls .baharoute-segmented {
+    flex-wrap: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .baharoute-compare-panel > .baharoute-trip-panel__primary {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    flex-shrink: 0;
+    box-shadow: 0 -8px 12px var(--baharoute-surface);
+  }
   .baharoute-route-sheet-toggle {
     display: block;
     min-height: 44px;
@@ -2178,6 +2229,7 @@ body,
     font: inherit;
     font-weight: 700;
     cursor: pointer;
+    flex-shrink: 0;
   }
   .baharoute-trip-host[data-minimized='true'] .baharoute-route-comparison-details {
     display: none;
@@ -2567,6 +2619,9 @@ body,
     border-radius: 16px 16px 0 0;
     background: var(--baharoute-surface);
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+  }
+  .baharoute-search-panel > * {
+    flex-shrink: 0;
   }
   .baharoute-search-panel.is-reopening {
     animation: baharoute-search-reopen 280ms ease-in;
