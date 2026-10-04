@@ -994,6 +994,51 @@ describe('MapManager.onRoutePreviewSelect (map-line selection)', () => {
 
 
 describe('route preview visibility and selection', () => {
+  it.each(['load', 'idle'])('draws the latest route selected before map readiness on %s', (event) => {
+    const { map, factory } = makeFake();
+    let loaded = false;
+    const sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>();
+    const layers = new Map<string, unknown>();
+    Object.assign(map, {
+      isStyleLoaded: () => loaded,
+      addSource: (id: string) => {
+        if (!loaded) throw new Error('Style is not done loading');
+        sources.set(id, { setData: vi.fn() });
+      },
+      getSource: (id: string) => sources.get(id),
+      removeSource: (id: string) => sources.delete(id),
+      addLayer: (layer: { id: string }) => layers.set(layer.id, layer),
+      getLayer: (id: string) => layers.get(id),
+      removeLayer: (id: string) => layers.delete(id),
+    });
+    const mgr = new MapManager();
+    mgr.init({ container: document.createElement('div'), config: CONFIG, mapFactory: factory });
+    const routes = [
+      { id: 'a', geometry: [[121, 14.6], [121.05, 14.62]] as [number, number][] },
+      { id: 'b', geometry: [[121, 14.6], [121.02, 14.61], [121.05, 14.62]] as [number, number][] },
+    ];
+    mgr.showRoutePreview(routes, 'a', [[121, 14.6], [121.05, 14.62]]);
+    mgr.updateRoutePreviewSelection(routes, 'b');
+    expect(mgr.isRoutePreviewActive()).toBe(false);
+    loaded = true;
+    map.emit(event);
+    expect(mgr.isRoutePreviewActive()).toBe(true);
+    expect(sources.get('route-preview-selected')?.setData).toHaveBeenLastCalledWith({
+      type: 'FeatureCollection', features: [expect.objectContaining({
+        properties: { routeId: 'b' }, geometry: { type: 'LineString', coordinates: routes[1].geometry },
+      })],
+    });
+    // A production style reload discards custom sources; replay their geometry.
+    sources.clear(); layers.clear();
+    map.emit('style.load');
+    expect(layers.has('route-preview-selected-line')).toBe(true);
+    expect(sources.get('route-preview-selected')?.setData).toHaveBeenCalled();
+    mgr.clearRoutePreview();
+    map.emit('style.load'); map.emit('idle');
+    expect(sources.has('route-preview-selected')).toBe(false);
+    mgr.destroy();
+  });
+
   it('draws the selected route above alternatives and switches its geometry', () => {
     const { map, factory } = makeFake();
     const sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>();

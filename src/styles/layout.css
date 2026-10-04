@@ -2165,6 +2165,13 @@ body,
 .baharoute-route-summary {
   display: none;
 }
+.baharoute-compare-panel > .baharoute-trip-panel__primary {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  box-shadow: 0 -8px 12px var(--baharoute-surface);
+}
 @media (max-width: 767px) {
   .baharoute-trip-host:not(.baharoute-trip-host--search) {
     max-height: min(56dvh, calc(100dvh - var(--baharoute-safe-top) - 172px));
@@ -2209,13 +2216,6 @@ body,
     flex-wrap: nowrap;
     width: 100%;
     box-sizing: border-box;
-  }
-  .baharoute-compare-panel > .baharoute-trip-panel__primary {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    flex-shrink: 0;
-    box-shadow: 0 -8px 12px var(--baharoute-surface);
   }
   .baharoute-route-sheet-toggle {
     display: block;

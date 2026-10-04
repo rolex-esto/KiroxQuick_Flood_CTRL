@@ -232,6 +232,7 @@ export interface MinimalMap {
   getSource?(id: string): { setData?(data: unknown): unknown } | undefined;
   removeLayer?(id: string): unknown;
   removeSource?(id: string): unknown;
+  isStyleLoaded?(): boolean;
 }
 
 /**
@@ -361,6 +362,13 @@ export class MapManager {
     this.installNcrOutsideMask();
     this.installMetroManilaClip();
     this.settleReady();
+    this.restoreRoutePreview();
+  };
+  private readonly handleStyleLoad = (): void => {
+    this.restoreRoutePreview();
+  };
+  private readonly handleIdle = (): void => {
+    if (!this.routePreviewActive) this.restoreRoutePreview();
   };
   private readonly handleError = (): void => this.settleFailure('error');
 
@@ -420,6 +428,8 @@ export class MapManager {
 
     // Map load success clears the watchdog; error or timeout reports failure.
     map.on('load', this.handleLoad);
+    map.on('style.load', this.handleStyleLoad);
+    map.on('idle', this.handleIdle);
     map.on('error', this.handleError);
 
     this.startWatchdog();
@@ -863,6 +873,16 @@ export class MapManager {
 
   /** True while route-preview overlays are installed. */
   private routePreviewActive = false;
+  private pendingRoutePreview: {
+    routes: ReadonlyArray<PreviewRoute>;
+    selectedId: string;
+    ends: [[number, number], [number, number]];
+  } | null = null;
+
+  private restoreRoutePreview(): void {
+    const preview = this.pendingRoutePreview;
+    if (preview) this.showRoutePreview(preview.routes, preview.selectedId, preview.ends);
+  }
 
   /** Draws a route line as a GeoJSON feature via a source's setData. */
   private setPreviewLine(
@@ -907,6 +927,8 @@ export class MapManager {
     if (!map || typeof map.addSource !== 'function' || typeof map.addLayer !== 'function') return;
     this.clearRoutePreview();
     if (routes.length === 0) return;
+    this.pendingRoutePreview = { routes, selectedId, ends };
+    if (map.isStyleLoaded?.() === false) return;
     try {
       // Alternatives first (drawn beneath), then the selected route on top.
       // `promoteId: routeId` makes the clicked alt feature's id its routeId so a
@@ -987,6 +1009,9 @@ export class MapManager {
    * rest fade. Called when the user selects a different route card / line.
    */
   updateRoutePreviewSelection(routes: ReadonlyArray<PreviewRoute>, selectedId: string): void {
+    if (this.pendingRoutePreview) {
+      this.pendingRoutePreview = { ...this.pendingRoutePreview, routes, selectedId };
+    }
     if (!this.routePreviewActive) return;
     const selected = routes.find((r) => r.id === selectedId);
     const alternatives = routes.filter((r) => r.id !== selected?.id);
@@ -1051,6 +1076,7 @@ export class MapManager {
 
   /** Removes the route-preview overlays (before Driver Mode or on cancel). */
   clearRoutePreview(): void {
+    this.pendingRoutePreview = null;
     const map = this.map;
     if (!map) return;
     try {
@@ -1292,12 +1318,16 @@ export class MapManager {
 
     if (this.map) {
       this.map.off('load', this.handleLoad);
+      this.map.off('style.load', this.handleStyleLoad);
+      this.map.off('idle', this.handleIdle);
       this.map.off('error', this.handleError);
       this.map.remove();
       this.map = null;
     }
 
     this.container = null;
+    this.pendingRoutePreview = null;
+    this.routePreviewActive = false;
   }
 
   // --- internal ------------------------------------------------------------

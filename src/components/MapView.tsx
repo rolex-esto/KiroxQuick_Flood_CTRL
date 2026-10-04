@@ -1560,6 +1560,7 @@ export function MapView({
   type TripStage = 'search' | 'comparing' | 'navigating';
   const [tripStage, setTripStage] = useState<TripStage>('search');
   const [routePanelMinimized, setRoutePanelMinimized] = useState(false);
+  const [routePanelSession, setRoutePanelSession] = useState(0);
   const [tripOrigin, setTripOrigin] = useState<TripEndpoint | null>(null);
   const [tripDestination, setTripDestination] = useState<TripEndpoint | null>(null);
   const [routeOptions, setRouteOptions] = useState<readonly RouteOption[]>([]);
@@ -2140,8 +2141,16 @@ export function MapView({
    * semantics; Historical remains demo/research context.
    */
   const handleMapModeChange = (next: MapMode): void => {
-    if (next === mapMode) return;
+    if (next === mapMode && next !== 'route') return;
     setMapMode(next);
+    if (next === 'route') {
+      setPopup(null);
+      setControlPanel(null);
+      setRoutePanelMinimized(false);
+      setRoutePanelSession((session) => session + 1);
+      // Explicit Route navigation must reclaim the panel from historical exploration.
+      if (historicalVisible) handleLayerToggle('floodSusceptibility', false);
+    }
 
     // Leaving Community: ensure report-pick + compose state are cleared.
     if (next !== 'community') {
@@ -2565,8 +2574,8 @@ export function MapView({
     isError: phase === 'error',
     driving,
     barangaySelected: popup?.kind === 'barangay',
-    comparing: tripStage === 'comparing',
-    searching: tripStage === 'search',
+    comparing: mapMode === 'route' && tripStage === 'comparing',
+    searching: mapMode === 'route' && tripStage === 'search',
     historicalVisible,
   });
 
@@ -2583,7 +2592,8 @@ export function MapView({
     if (primaryLeftPanel !== 'compare' || !tripOrigin || !tripDestination) return;
     const container = containerRef.current;
     const map = managerRef.current?.getMap?.();
-    if (!container || !map || container.clientWidth >= 768) return;
+    if (!container || !map) return;
+    const mobile = container.clientWidth < 768;
     const fit = (map as unknown as { fitBounds?: (bounds: unknown, options: unknown) => void }).fitBounds;
     if (!fit) return;
     const host = container.parentElement;
@@ -2597,15 +2607,15 @@ export function MapView({
     ], {
       padding: {
         top: Math.max(24, (navigation?.bottom ?? rect.top) - rect.top + 24),
-        bottom: Math.max(24, rect.bottom - (sheet?.top ?? rect.bottom) + 24),
-        left: 40,
+        bottom: mobile ? Math.max(24, rect.bottom - (sheet?.top ?? rect.bottom) + 24) : 32,
+        left: mobile ? 40 : Math.max(40, (sheet?.right ?? rect.left) - rect.left + 24),
         right: 40,
       },
       pitch: 0,
       maxZoom: 16,
       duration: 700,
     });
-  }, [routePanelMinimized, primaryLeftPanel, tripOrigin, tripDestination, routeOptions]);
+  }, [phase, routePanelMinimized, primaryLeftPanel, tripOrigin, tripDestination, routeOptions]);
   const showRouteReadyChip =
     !driving &&
     phase !== 'error' &&
@@ -3297,6 +3307,7 @@ export function MapView({
       {primaryLeftPanel === 'search' && mapMode === 'route' && (
         <div className="baharoute-trip-host baharoute-trip-host--search" data-testid="trip-host">
           <RouteSearchPanel
+            key={routePanelSession}
             origin={tripOrigin}
             destination={tripDestination}
             onOriginChange={handleOriginChange}

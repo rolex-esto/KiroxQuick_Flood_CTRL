@@ -502,21 +502,21 @@ describe('MapView — trip flow entry (Search → Compare → Start)', () => {
 });
 
 describe('MapView — route preview (auto lines + selection + Start)', () => {
-  it('shows mobile route choices after Point B and frames the trip above the sheet', async () => {
+  it.each([390, 1280])('shows route choices and frames the trip clear of the panel at %s px', async (width) => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const user = userEvent.setup();
     const previousWidth = window.innerWidth;
-    window.innerWidth = 390;
+    window.innerWidth = width;
     const fitBounds = vi.fn();
     const { manager } = makeFakeManager({ fitBounds } as unknown as MinimalMap);
     const view = render(<MapView config={CONFIG} createMapManager={() => manager}
       createMarkerManager={() => ({ setOrigin: vi.fn(), setDestination: vi.fn(), destroy: vi.fn() }) as never} />);
     const container = screen.getByTestId('map-container');
-    Object.defineProperty(container, 'clientWidth', { value: 390 });
+    Object.defineProperty(container, 'clientWidth', { value: width });
     const measure = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      if (this === container) return { top: 0, bottom: 844 } as DOMRect;
+      if (this === container) return { left: 0, right: width, top: 0, bottom: 844 } as DOMRect;
       if (this.classList.contains('baharoute-mode-switcher-host')) return { top: 90, bottom: 144 } as DOMRect;
-      if (this.classList.contains('baharoute-trip-host')) return { top: 704, bottom: 844 } as DOMRect;
+      if (this.classList.contains('baharoute-trip-host')) return { top: 704, bottom: 844, right: 352 } as DOMRect;
       return { top: 0, bottom: 0 } as DOMRect;
     });
     try {
@@ -526,7 +526,7 @@ describe('MapView — route preview (auto lines + selection + Start)', () => {
       expect(screen.getByTestId('start-route-button')).toBeInTheDocument();
       expect(fitBounds).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({
         pitch: 0,
-        padding: { top: 168, bottom: 164, left: 40, right: 40 },
+        padding: { top: 168, bottom: width < 768 ? 164 : 32, left: width < 768 ? 40 : 376, right: 40 },
       }));
       await user.click(screen.getByRole('button', { name: 'Minimize routes' }));
       expect(screen.getByTestId('trip-host')).toHaveAttribute('data-minimized', 'true');
@@ -991,6 +991,21 @@ describe('Community Report V2 — report-mode / lifecycle UX (Phase 1 fixes)', (
 });
 
 describe('MapView — Route / Community / Historical navigation', () => {
+  it('opens routing when Route is pressed while the historical layer owns the panel', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const { manager, init } = makeFakeManager();
+    render(<MapView config={CONFIG} createMapManager={() => manager} />);
+    act(() => init.mock.calls[0][0].onReady());
+    await user.click(screen.getByTestId('controls-menu-button'));
+    await user.click(screen.getByTestId('layers-button'));
+    await user.click(screen.getByTestId('layer-checkbox-floodSusceptibility'));
+    expect(screen.queryByTestId('route-search-panel')).toBeNull();
+    await user.click(screen.getByTestId('map-mode-route'));
+    expect(screen.getByTestId('route-search-panel')).toBeVisible();
+    expect(screen.queryByTestId('historical-explore')).toBeNull();
+    expect(screen.getByTestId('layers-panel')).not.toBeVisible();
+  });
+
   it('switches between exclusive surfaces and returns to route planning', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const user = userEvent.setup();
